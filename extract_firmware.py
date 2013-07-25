@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Copyright 2013 Ilia Mirkin.
 #
@@ -48,11 +48,11 @@ sh NVIDIA-Linux-x86_64-%(version)s.run --extract-only
 """ % {"version": VERSION}
     sys.exit(1)
 
-kernel_f = open("NVIDIA-Linux-x86_64-%s/kernel/nv-kernel.o" % VERSION, "r")
-kernel = mmap.mmap(kernel_f.fileno(), 0, access=mmap.ACCESS_READ)
+with open("NVIDIA-Linux-x86_64-%s/kernel/nv-kernel.o" % VERSION, "r") as kernel_f:
+    kernel = mmap.mmap(kernel_f.fileno(), 0, access=mmap.ACCESS_READ)
 
-user_f = open("NVIDIA-Linux-x86_64-%s/libnvcuvid.so.%s" % (VERSION, VERSION), "r")
-user = mmap.mmap(user_f.fileno(), 0, access=mmap.ACCESS_READ)
+with open("NVIDIA-Linux-x86_64-%s/libnvcuvid.so.%s" % (VERSION, VERSION), "r") as user_f:
+    user = mmap.mmap(user_f.fileno(), 0, access=mmap.ACCESS_READ)
 
 vp2_kernel_prefix = "\xcd\xab\x55\xee\x44"
 vp2_user_prefix = "\xce\xab\x55\xee\x20\x00\x00\xd0\x00\x00\x00\xd0"
@@ -268,17 +268,25 @@ done = set()
 for data in files:
     for match in re.finditer(start_re, data):
         for name, v in BLOBS.iteritems():
+
             if name in done or data != v["data"] or match.group(0) != v["start"]:
                 continue
 
             i = match.start(0)
-            pred = v.get("pred")
+            try:
+                pred = v["pred"]
+            except KeyError:
+                pass
+            
             if pred and not pred(data, i):
                 continue
 
             length = v["length"]
-            links = v.get("links", [])
-
+            try:
+                links = v["links"]
+            except KeyError:
+                links = []
+            
             with open(os.path.join(cwd, name), "w") as f:
                 f.write(data[i:i+length])
 
@@ -286,7 +294,7 @@ for data in files:
             for link in links:
                 try:
                     os.unlink(link)
-                except:
+                except OSError:
                     pass
                 os.symlink(name, link)
 
@@ -299,7 +307,7 @@ for v in PATCHES:
     start = v["start"]
     length = v["length"]
     fname = v["file"]
-    for i in xrange(data.size()):
+    for i, _ in enumerate(data):
         if data[i:i+len(start)] == start:
             with open(os.path.join(cwd, fname), "r+") as f:
                 for p in v["patches"]:

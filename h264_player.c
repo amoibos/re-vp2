@@ -83,12 +83,9 @@ uint64_t read_bits(void *addr, int *bit_offset, int n) {
 
 uint64_t ue(void *addr, int *bit_offset) {
   int leadingZeroBits = -1;
-  int b;
-  for (b = 0; !b; leadingZeroBits++) {
-    b = read_bit(addr, bit_offset);
-  }
-  int ret = (1 << leadingZeroBits) - 1 + read_bits(addr, bit_offset, leadingZeroBits);
-  return ret;
+  for (; !read_bit(addr, bit_offset); leadingZeroBits++);
+  
+  return (1 << leadingZeroBits) - 1 + read_bits(addr, bit_offset, leadingZeroBits);
 }
 
 int64_t se(void *addr, int *bit_offset) {
